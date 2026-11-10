@@ -4,7 +4,7 @@
 
 ## 下载
 
-本分支为 0.10.0 手机遥控集成实验版，安装包在本地构建，手机端到端验证暂缓；公开稳定版本仍为 0.9.5。
+0.10.0 新增内置 iPhone 系统遥控器，以及 Mac 系统音量控制。iPhone 实机已确认侧面音量键生效，完整验证范围见 [TESTING.md](TESTING.md)。
 
 从 [GitHub Releases](https://github.com/machauncy1/mactv-native/releases/latest) 下载 Universal ZIP，同时适用于 Apple Silicon 与 Intel。解压后将 `MacTV Native.app` 放入“应用程序”。Release 附带 `SHA256SUMS.txt` 供校验。
 
@@ -34,7 +34,7 @@
 
 支持原 USB 接收器（VID 0x0406 / PID 0x0602），仅在 App 前台读取。首次使用在 macOS“隐私与安全性 → 输入监控”允许 MacTV Native，并重新打开 App。旧独占转发程序应保持停用，实体接收器待重新接入后验证。
 
-键盘方向键与回车对应选择／确定，Esc 返回，Home 回首页，M 暂停／继续，F 切换全屏。控制中心只保留 Wi-Fi 入口，由系统设置承担网络连接。遵照要求，本轮未打开 Wi-Fi 设置或切换网络。
+键盘方向键与回车对应选择／确定，Esc 返回，Home 回首页，M 暂停／继续，F 切换全屏。控制中心提供 Wi-Fi 和 iPhone 遥控器入口，网络连接由系统设置承担。本轮未打开 Wi-Fi 设置或切换网络。
 
 ## iPhone 自带遥控器
 
@@ -46,7 +46,7 @@
 
 手机输入不要求辅助功能或输入监控权限；系统若询问本地网络权限，请允许 MacTV Native。USB 接收器仍按原来的方式要求输入监控。配对私钥和已配对手机公钥保存在用户 Application Support 下，目录权限 0700、文件权限 0600。网络调试界面默认不启动；App 与辅助进程仅通过继承的管道通信，App 退出后接收端随之退出。
 
-协议来源和本地修改见 [RemoteReceiver/UPSTREAM.md](RemoteReceiver/UPSTREAM.md)。该版本为本机集成实验版，尚未公开发布。
+协议来源和本地修改见 [RemoteReceiver/UPSTREAM.md](RemoteReceiver/UPSTREAM.md)。系统音频调用在后台串行执行，设有超时与过期指令保护，避免音频服务异常阻塞界面。
 
 ## 构建与验证
 
