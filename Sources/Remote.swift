@@ -18,7 +18,7 @@ import IOKit.hidsystem
     func start() {
         refresh()
         poll=Timer.scheduledTimer(withTimeInterval:2,repeats:true) { [weak self] _ in
-            Task { @MainActor in self?.refresh() }
+            Task { @MainActor [weak self] in self?.refresh() }
         }
     }
     private func refresh() {
@@ -73,7 +73,7 @@ import IOKit.hidsystem
         lastButton=command.label;onCommand?(command,"hid")
         if command.repeats {
             let timer=Timer(fire:Date(timeIntervalSinceNow:0.42),interval:0.12,repeats:true) { [weak self] _ in
-                Task { @MainActor in
+                Task { @MainActor [weak self] in
                     guard NSApp.isActive else{self?.releaseAll();return}
                     self?.onCommand?(command,"hid")
                 }

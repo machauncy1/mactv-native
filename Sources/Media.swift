@@ -21,7 +21,7 @@ import WebKit
         player.volume=volume
         player.appliesMediaSelectionCriteriaAutomatically=false
         observer=player.addPeriodicTimeObserver(forInterval:CMTime(seconds:0.25,preferredTimescale:600),queue:.main) { [weak self] time in
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 guard let self else{return}
                 self.current=max(0,time.seconds.isFinite ? time.seconds : 0)
                 self.playing=self.player.rate>0
@@ -35,7 +35,7 @@ import WebKit
         let item=AVPlayerItem(url:url)
         statusObservation=item.observe(\.status,options:[.initial,.new]) { [weak self] item,_ in
             let failed=item.status == .failed
-            DispatchQueue.main.async {
+            DispatchQueue.main.async { [weak self] in
                 guard let self,self.player.currentItem === item else{return}
                 if item.status == .readyToPlay,let subtitles=item.asset.mediaSelectionGroup(forMediaCharacteristic:.legible) {self.player.currentItem?.select(nil,in:subtitles)}
                 if item.status == .readyToPlay,position>0 {
@@ -46,7 +46,7 @@ import WebKit
         }
         if let finished {NotificationCenter.default.removeObserver(finished)}
         finished=NotificationCenter.default.addObserver(forName:.AVPlayerItemDidPlayToEndTime,object:item,queue:.main) { [weak self] _ in
-            Task { @MainActor in self?.playing=false }
+            Task { @MainActor [weak self] in self?.playing=false }
         }
         player.replaceCurrentItem(with:item)
         player.play();playing=true

@@ -28,12 +28,14 @@ struct BilibiliScreen:View {
                     }}
                 }.transition(TVDesign.sheetTransition(reduced:motion))
             }
+            Group {
             if tv.panel == .search {searchPanel.transition(TVDesign.sheetTransition(reduced:motion))}
             if tv.panel == .login {loginPanel.transition(TVDesign.sheetTransition(reduced:motion))}
             if tv.panel == .quality {qualityPanel.transition(TVDesign.sheetTransition(reduced:motion))}
             if tv.panel == .episodes {episodes.transition(TVDesign.sheetTransition(reduced:motion))}
             if let target=tv.nextTransition ?? tv.autoplay.target {nextEpisode(target).transition(TVDesign.sheetTransition(reduced:motion))}
             if let toast=tv.toast {VStack{Spacer();Text(toast).font(.system(size:17*scale)).padding(20).background(.regularMaterial,in:Capsule()).padding(.bottom,32)}}
+            }
         }
         .onAppear{tv.start()}.onDisappear{tv.stop()}
         .animation(motion ? nil : TVDesign.navigation,value:tv.snapshot.isPlayer)
@@ -89,7 +91,7 @@ struct BilibiliScreen:View {
                         }.padding(.horizontal,viewport.size.width/24).padding(.top,viewport.size.height/18).padding(.bottom,40*scale).id("catalogTop")
                     }.coordinateSpace(name:"bilibiliCatalog")
                         .onPreferenceChange(CatalogBottomPreference.self){y in tv.catalogueEndVisible(y<viewport.size.height+260)}
-                        .onChange(of:tv.focus){_,focus in withAnimation(motion ? nil:TVDesign.navigation){if focus.row==0 {proxy.scrollTo("catalogTop",anchor:.top)}else{proxy.scrollTo(tv.cardIndex,anchor:.center)}}}
+                        .onChange(of:tv.focus){focus in withAnimation(motion ? nil:TVDesign.navigation){if focus.row==0 {proxy.scrollTo("catalogTop",anchor:.top)}else{proxy.scrollTo(tv.cardIndex,anchor:.center)}}}
                 }
             }
         }
@@ -131,7 +133,7 @@ struct BilibiliScreen:View {
                 ScrollViewReader{proxy in ScrollView {
                     VStack(spacing:12){ForEach(Array(tv.snapshot.qualities.enumerated()),id:\.element.id){i,item in
                         Button{tv.chooseQuality(item)}label:{HStack{Text(item.title);Spacer();if item.current {Image(systemName:"checkmark.circle.fill")}}.frame(maxWidth:.infinity)}.buttonStyle(TVActionStyle(focused:tv.qualityIndex==i,reducedMotion:motion)).id(i)
-                    }}.onAppear{proxy.scrollTo(tv.qualityIndex,anchor:.center)}.onChange(of:tv.qualityIndex){_,index in withAnimation(motion ? nil:TVDesign.focusSpring){proxy.scrollTo(index,anchor:.center)}}
+                    }}.onAppear{proxy.scrollTo(tv.qualityIndex,anchor:.center)}.onChange(of:tv.qualityIndex){index in withAnimation(motion ? nil:TVDesign.focusSpring){proxy.scrollTo(index,anchor:.center)}}
                 }}.frame(maxHeight:330*scale)
             }.padding(32*scale).frame(maxWidth:660*scale).modifier(TVSurface()).padding(40*scale)
         }
@@ -160,7 +162,7 @@ struct BilibiliScreen:View {
                                     BilibiliEpisodeButton(episode:item,focused:!tv.rangeFocused && tv.episodeIndex==i,motion:motion){tv.activate(item.id)}.id(item.number)
                                 }
                             }.padding(5)
-                        }.onAppear{if tv.snapshot.episodes.indices.contains(tv.episodeIndex){proxy.scrollTo(tv.snapshot.episodes[tv.episodeIndex].number,anchor:.center)}}.onChange(of:tv.episodeIndex){_,value in withAnimation(motion ? nil:.smooth(duration:0.2)){if tv.snapshot.episodes.indices.contains(value){proxy.scrollTo(tv.snapshot.episodes[value].number)}}}
+                        }.onAppear{if tv.snapshot.episodes.indices.contains(tv.episodeIndex){proxy.scrollTo(tv.snapshot.episodes[tv.episodeIndex].number,anchor:.center)}}.onChange(of:tv.episodeIndex){value in withAnimation(motion ? nil:.tvSmooth(duration:0.2)){if tv.snapshot.episodes.indices.contains(value){proxy.scrollTo(tv.snapshot.episodes[value].number)}}}
                     }.frame(maxHeight:280*scale)
                 }
                 }
@@ -266,7 +268,7 @@ struct BilibiliPoster:View {
             }
         }.buttonStyle(TVPressStyle(reducedMotion:motion)).accessibilityLabel(item.title)
             .onAppear{cover.load(item.poster,title:item.title,animated:!motion)}
-            .onChange(of:item){_,item in cover.load(item.poster,title:item.title,animated:!motion)}
+            .onChange(of:item){item in cover.load(item.poster,title:item.title,animated:!motion)}
             .onDisappear{cover.cancel()}
             .animation(motion ? nil:TVDesign.focusSpring,value:focused)
     }

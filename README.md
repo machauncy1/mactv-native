@@ -1,8 +1,10 @@
-# MacTV Native 0.9.5
+# MacTV Native 0.10.0
 
 支持 Apple Silicon（M4 等）和 Intel 的原生 macOS 大屏媒体中心，最低 macOS 14。
 
 ## 下载
+
+本分支为 0.10.0 手机遥控集成实验版，安装包在本地构建，手机端到端验证暂缓；公开稳定版本仍为 0.9.5。
 
 从 [GitHub Releases](https://github.com/machauncy1/mactv-native/releases/latest) 下载 Universal ZIP，同时适用于 Apple Silicon 与 Intel。解压后将 `MacTV Native.app` 放入“应用程序”。Release 附带 `SHA256SUMS.txt` 供校验。
 
@@ -34,13 +36,28 @@
 
 键盘方向键与回车对应选择／确定，Esc 返回，Home 回首页，M 暂停／继续，F 切换全屏。控制中心只保留 Wi-Fi 入口，由系统设置承担网络连接。遵照要求，本轮未打开 Wi-Fi 设置或切换网络。
 
+## iPhone 自带遥控器
+
+打开 MacTV Native 会自动启动内置接收端，无需运行另一个遥控 App。iPhone 与 Mac 必须在同一局域网；首次在 MacTV「控制中心 → iPhone 遥控器」查看设备名称和随机配对码，然后在 iPhone 控制中心的「遥控器」选择该设备。配对窗口开放 5 分钟，成功后关闭；再次打开手机遥控器可自动重连。退到后台断开控制会话不会停止播放。
+
+支持方向、确认、返回、首页、播放暂停、快进快退，以及播放器音量和静音。所有命令只在 MacTV 前台处理，经现有 RemoteCommand 分发；不注入系统键鼠，不调整 macOS 或电视的硬件音量。USB 遥控器与键盘继续可用。网页导航仍取决于平台适配；不提供 Siri 或系统电源控制。
+
+控制中心可开关接收端、保存设备名、开放新手机配对窗口、忘记全部配对和重试接收端。名称、开关和设备身份跨 App 重启保留；“忘记配对”会更新设备身份、私钥和 PIN，旧手机必须重新选择设备并配对。接收端运行、手机连接、控制会话就绪分别显示，断线时清除会话状态。
+
+手机输入不要求辅助功能或输入监控权限；系统若询问本地网络权限，请允许 MacTV Native。USB 接收器仍按原来的方式要求输入监控。配对私钥和已配对手机公钥保存在用户 Application Support 下，目录权限 0700、文件权限 0600。网络调试界面默认不启动；App 与辅助进程仅通过继承的管道通信，App 退出后接收端随之退出。
+
+协议来源和本地修改见 [RemoteReceiver/UPSTREAM.md](RemoteReceiver/UPSTREAM.md)。该版本为本机集成实验版，尚未公开发布。
+
 ## 构建与验证
 
-需要 macOS，以及包含 macOS 26 或更新 SDK 的 Xcode／命令行工具（用于编译原生玻璃材质 API）。v0.9.5 使用 macOS 27.2 SDK、Swift 6.4.2，以 Swift 5 语言模式构建；部署目标仍为 macOS 14。
+需要 macOS、Xcode／命令行工具和 Rust 工具链，安装 aarch64-apple-darwin 与 x86_64-apple-darwin 两个 Rust target。部署目标保持 macOS 14；新版 Swift／SDK 使用原生玻璃材质，旧工具链使用现有材质回退。构建脚本通过 Cargo.lock 锁定接收端依赖。
 
 
 ```sh
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
 bash scripts/build.sh
+cargo test --locked --manifest-path RemoteReceiver/Cargo.toml --workspace
+python3 scripts/test-iphone-receiver.py "dist/MacTV Native.app/Contents/MacOS/MacTVRemoteReceiver"
 .build/MacTVNative-arm64 --self-test
 arch -x86_64 .build/MacTVNative-x86_64 --self-test
 node scripts/test-bilibili-adapter.cjs

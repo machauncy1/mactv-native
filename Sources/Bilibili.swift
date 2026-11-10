@@ -95,7 +95,7 @@ enum BilibiliPanel {case none,episodes,search,login,quality}
     var rows:[Int] {let n=snapshot.cards.count;return n==0 ? [catalogActions.count] : [catalogActions.count]+stride(from:0,to:n,by:4).map{min(4,n-$0)}}
     var cardIndex:Int {max(0,(focus.row-1)*4+focus.column)}
     func attach(_ browser:YouTubeBrowser){self.browser=browser}
-    func start(){guard !active else{return};active=true;refresh();timer=Timer.scheduledTimer(withTimeInterval:1,repeats:true){[weak self] _ in Task{@MainActor in self?.refresh()}}}
+    func start(){guard !active else{return};active=true;refresh();timer=Timer.scheduledTimer(withTimeInterval:1,repeats:true){[weak self] _ in Task{@MainActor [weak self] in self?.refresh()}}}
     func stop(){creatorLibrary.suspend();nextTransition=nil;transitionBackdrop=nil;cancelNextEpisode(notify:false);active=false;timer?.invalidate();timer=nil;hudTask?.cancel();moreTask?.cancel();moreTask=nil;pagination.reset();nearCatalogueEnd=false}
     func navigationStarted(){awaitingNavigation=false;cancelNextEpisode(notify:false);if snapshot.isPlayer {transitioningPlayer=true};moreTask?.cancel();moreTask=nil;pagination.reset();nearCatalogueEnd=false;generation+=1;pending=false;busy=true}
     func refresh(){

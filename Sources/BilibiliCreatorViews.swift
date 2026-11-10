@@ -51,7 +51,7 @@ struct BilibiliCreatorShelf:View {
                     }
 
                 }.padding(.horizontal,10*scale).padding(.vertical,10*scale)}
-                .onAppear{scroll(proxy,state:state)}.onChange(of:state.index){_,_ in withAnimation(motion ? nil:TVDesign.focusSpring){scroll(proxy,state:state)}}
+                .onAppear{scroll(proxy,state:state)}.onChange(of:state.index){_ in withAnimation(motion ? nil:TVDesign.focusSpring){scroll(proxy,state:state)}}
             }.frame(height:210*scale)}
         }
     }
@@ -63,7 +63,7 @@ struct BilibiliCreatorShelf:View {
                     collectionTab(title:entry.title,index:i,symbol:"rectangle.stack.fill")
                 }
             }.padding(.horizontal,10*scale).padding(.vertical,10*scale)}
-            .onChange(of:library.collectionFocus.index){_,index in withAnimation(motion ? nil:TVDesign.focusSpring){proxy.scrollTo(index,anchor:.center)}}
+            .onChange(of:library.collectionFocus.index){index in withAnimation(motion ? nil:TVDesign.focusSpring){proxy.scrollTo(index,anchor:.center)}}
         }.frame(height:95*scale)
     }
     private func collectionTab(title:String,index:Int,symbol:String)->some View {
