@@ -30,6 +30,7 @@ enum Screen {case home,player,web,recent}
     }
     let remote=RemoteInput()
     let iphoneRemote=IPhoneRemote()
+    let systemAudio=SystemAudio()
     @Published var remoteSettingsOpen=false
     private var filePanel:NSOpenPanel?
     private var homeIndex=UserDefaults.standard.integer(forKey:"homeAppIndex")
@@ -64,7 +65,7 @@ enum Screen {case home,player,web,recent}
         iphoneRemote.onCommand={ [weak self] command in self?.input(command,source:"iphone") }
         iphoneRemote.onAudio={ [weak self] volume,muted in
             guard let self,NSApp.isActive else{return}
-            self.setPlayerAudio(volume:volume,muted:muted)
+            self.setRemoteAudio(volume:volume,muted:muted)
         }
         playback.onProgress={ [weak self] _ in self?.persistProgress() }
     }
@@ -228,7 +229,17 @@ enum Screen {case home,player,web,recent}
         UserDefaults.standard.set(next,forKey:"homeAppIndex")
     }
     func media(_ command:RemoteCommand) {
-        if screen == .web {browser.send(command)}
+        systemAudio.adjust(command){[weak self] result in
+            guard let self else{return}
+            switch result {
+            case .success(let state):self.showSystemAudio(state)
+            case .unsupported:self.playerAudio(command)
+            case .unavailable:self.message("系统音频服务未响应，请稍后重试")
+            }
+        }
+    }
+    private func playerAudio(_ command:RemoteCommand){
+        if screen == .web {browser.send(command);message("当前输出不支持系统调音，已调整播放器音量")}
         else {
             if command == .mute {playback.toggleMute()} else {playback.changeVolume(command == .volumeUp ? 0.05 : -0.05)}
             message(playback.muted ? "已静音" : "播放音量 \(Int(playback.volume*100))%")
@@ -236,17 +247,41 @@ enum Screen {case home,player,web,recent}
     }
     private func syncRemoteAudio() {
         guard iphoneRemote.running else{return}
+        systemAudio.read{[weak self] result in
+            guard let self else{return}
+            switch result {
+            case .success(let state):self.iphoneRemote.updateAudio(volume:state.volume,muted:state.muted)
+            case .unsupported:self.syncPlayerAudio()
+            case .unavailable:break
+            }
+        }
+    }
+    private func syncPlayerAudio(){
         if screen == .web,let current=cachedBrowsers[service] {
-            current.webView.evaluateJavaScript("(()=>{const v=document.querySelector('video,audio');return v?{volume:v.volume,muted:v.muted}:null})()") { [weak self] value,_ in
+            current.webView.evaluateJavaScript("(()=>{const v=\(YouTubeBrowser.mediaElement);return v?{volume:v.volume,muted:v.muted}:null})()") { [weak self] value,_ in
                 guard let self,self.screen == .web,self.service==current.service,
                       let state=value as? [String:Any],let volume=state["volume"] as? Double,let muted=state["muted"] as? Bool else{return}
                 self.iphoneRemote.updateAudio(volume:volume,muted:muted)
             }
         }else{iphoneRemote.updateAudio(volume:Double(playback.volume),muted:playback.muted)}
     }
-    func setPlayerAudio(volume:Double,muted:Bool) {
-        guard volume.isFinite else{return}
-        let volume=min(1,max(0,volume))
+    private func showSystemAudio(_ state:SystemAudioSnapshot){
+        iphoneRemote.updateAudio(volume:state.volume,muted:state.muted)
+        message(state.muted ? "系统已静音":"系统音量 \(Int((state.volume*100).rounded()))%")
+    }
+    func setRemoteAudio(volume:Double,muted:Bool) {
+        guard let volume=AudioLevel.clamped(volume) else{return}
+        systemAudio.set(volume:volume,muted:muted){[weak self] result in
+            guard let self else{return}
+            switch result {
+            case .success(let state):self.showSystemAudio(state)
+            case .unsupported:self.setPlayerAudio(volume:volume,muted:muted)
+            case .unavailable:self.message("系统音频服务未响应，请稍后重试")
+            }
+        }
+    }
+    private func setPlayerAudio(volume:Double,muted:Bool){
+        message("当前输出不支持系统调音，已调整播放器音量")
         if screen == .web {browser.media("v.volume=\(volume);v.muted=\(muted ? "true":"false");")}
         else {playback.volume=Float(volume);playback.muted=muted;playback.player.volume=Float(volume);playback.player.isMuted=muted}
     }

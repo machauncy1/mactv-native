@@ -112,7 +112,8 @@ enum WebService:String,CaseIterable {
     func loadTV() {loaded=true;failure=nil;webView.customUserAgent=tvAgent;webView.load(URLRequest(url:URL(string:"https://www.youtube.com/tv")!))}
     func desktopSite() {loaded=true;failure=nil;webView.customUserAgent=nil;webView.load(URLRequest(url:URL(string:"https://www.youtube.com/")!))}
     func pause() {webView.evaluateJavaScript("document.querySelectorAll('video,audio').forEach(v=>v.pause())",completionHandler:nil)}
-    func media(_ expression:String) {webView.evaluateJavaScript("(()=>{const v=document.querySelector('video,audio');if(v){\(expression)}})()",completionHandler:nil)}
+    static let mediaElement="[...document.querySelectorAll('video,audio')].sort((a,b)=>b.clientWidth*b.clientHeight-a.clientWidth*a.clientHeight)[0]"
+    func media(_ expression:String) {webView.evaluateJavaScript("(()=>{const v=\(Self.mediaElement);if(v){\(expression)}})()",completionHandler:nil)}
     func back() -> Bool {if webView.canGoBack {webView.goBack();return true};return false}
     func send(_ command:RemoteCommand) {
         if let bilibili {bilibili.navigate(command);return}

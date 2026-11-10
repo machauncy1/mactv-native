@@ -212,7 +212,7 @@ import Foundation
                 lastCommand = command.label; commandCount += 1; onCommand?(command)
             }
         case "audio":
-            if let volume = message["volume"] as? Double, let muted = message["muted"] as? Bool { onAudio?(volume,muted) }
+            if let volume = message["volume"] as? Double, let muted = message["muted"] as? Bool { lastCommand="音量设置";onAudio?(volume,muted) }
         case "error": failure = "接收端异常，请重试或重新配对"
         case "stopped": running = false; connected = false; ready = false
         default:break

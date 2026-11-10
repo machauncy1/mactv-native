@@ -11,7 +11,7 @@ done
 for arch in arm64 x86_64; do
   xcrun swiftc -parse-as-library -swift-version 5 -O -target "$arch-apple-macos14.0" -sdk "$sdk" \
     Sources/*.swift -o ".build/MacTVNative-$arch" \
-    -framework AppKit -framework SwiftUI -framework AVKit -framework AVFoundation -framework WebKit -framework IOKit
+    -framework AppKit -framework SwiftUI -framework AVKit -framework AVFoundation -framework WebKit -framework IOKit -framework CoreAudio -framework AudioToolbox
 done
 app="dist/MacTV Native.app"
 if [[ -d "$app" ]]; then mv "$app" ".build/previous-app-$(date +%Y%m%d%H%M%S)-$$.app"; fi

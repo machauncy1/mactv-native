@@ -99,6 +99,10 @@ struct SmokeTests {
         for (page,usage,result) in inputs { check(RemoteCommand.hid(page:page,usage:usage)==result,"HID \(page):\(usage)") }
         check(RemoteCommand.hid(page:7,usage:4)==nil,"unrelated typing ignored")
         check(RemoteCommand.hid(page:7,usage:UInt32.max)==nil,"array metadata ignored")
+        check(AudioLevel.clamped(.nan)==nil && AudioLevel.clamped(.infinity)==nil,"reject invalid volume without writing audio device")
+        check(AudioLevel.clamped(-1)==0 && AudioLevel.clamped(2)==1,"system volume clamps to hardware range")
+        check(AudioLevel.adjusted(0.98,delta:0.05)==1,"volume up cannot exceed output maximum")
+        check(AudioLevel.adjusted(0.02,delta:-0.05)==0,"volume down cannot pass output minimum")
         var f=HomeFocus()
         f.move(.left,rows:[4,2]); check(f.column==0,"left boundary")
         for _ in 0..<8 { f.move(.right,rows:[4,2]) }
