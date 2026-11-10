@@ -14,11 +14,14 @@ import SwiftUI
         hosting.frame=window.contentView?.bounds ?? NSRect(x:0,y:0,width:1280,height:800)
         hosting.autoresizingMask=[.width,.height]
         hosting.sizingOptions=[.minSize]
+        #if compiler(>=5.9)
         hosting.safeAreaRegions=[]
+        #endif
         window.contentView=hosting
         window.center();window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps:true)
         installMenu();model.start()
+        if CommandLine.arguments.contains("--show-remote-settings") {model.menuOpen=true;model.remoteSettingsOpen=true}
         if let i=CommandLine.arguments.firstIndex(of:"--open"),i+1<CommandLine.arguments.count {
             model.openURL(URL(fileURLWithPath:CommandLine.arguments[i+1]))
         }

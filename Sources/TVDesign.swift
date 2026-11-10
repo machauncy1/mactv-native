@@ -62,13 +62,20 @@ struct TVSurface:ViewModifier {
         let shape=RoundedRectangle(cornerRadius:radius*scale,style:.continuous)
         if reduceTransparency {
             content.background(Color(white:0.12),in:shape).overlay(shape.strokeBorder(.white.opacity(0.14),lineWidth:0.7))
-        } else if #available(macOS 26.0,*) {
-            content.glassEffect(.regular,in:shape)
         } else {
-            content.background(.ultraThinMaterial,in:shape)
-                .overlay(shape.strokeBorder(LinearGradient(colors:[.white.opacity(0.30),.white.opacity(0.06),.white.opacity(0.16)],startPoint:.topLeading,endPoint:.bottomTrailing),lineWidth:0.8))
+            #if compiler(>=6.2)
+            if #available(macOS 26.0,*) { content.glassEffect(.regular,in:shape) }
+            else { legacySurface(content,shape:shape) }
+            #else
+            legacySurface(content,shape:shape)
+            #endif
         }
     }
+    private func legacySurface(_ content:Content,shape:RoundedRectangle)->some View {
+        content.background(.ultraThinMaterial,in:shape)
+            .overlay(shape.strokeBorder(LinearGradient(colors:[.white.opacity(0.30),.white.opacity(0.06),.white.opacity(0.16)],startPoint:.topLeading,endPoint:.bottomTrailing),lineWidth:0.8))
+    }
+
 }
 
 struct TVTimeline:View {
@@ -127,5 +134,15 @@ struct TVPlaybackPanel<Actions:View>:View {
                 .padding(.horizontal,54*scale).padding(.bottom,38*scale)
                 .background(LinearGradient(colors:[.clear,.black.opacity(0.5)],startPoint:.top,endPoint:.bottom).ignoresSafeArea(edges:.bottom))
         }.allowsHitTesting(true)
+    }
+}
+
+// Preserve smooth animation with newer SDKs; keep development builds usable on older tools.
+extension Animation {
+    static func tvSmooth(duration:Double)->Animation {
+        #if compiler(>=5.9)
+        if #available(macOS 14.0,*) {return .smooth(duration:duration)}
+        #endif
+        return .easeInOut(duration:duration)
     }
 }

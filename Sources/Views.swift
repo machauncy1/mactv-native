@@ -27,7 +27,7 @@ struct ShellView:View {
             if app.menuOpen {ControlCenter(app:app).transition((app.reducedMotion || systemReduceMotion) ? .opacity : .opacity.combined(with:.move(edge:.trailing)))}
             if let toast=app.toast {VStack{Spacer();Text(toast).padding(.horizontal,26).padding(.vertical,14).background(.ultraThinMaterial,in:Capsule()).padding(.bottom,35)}}
         }
-        .onChange(of:app.menuOpen){_,open in
+        .onChange(of:app.menuOpen){open in
             if !open && app.screen == .web {app.browser.webView.window?.makeFirstResponder(app.browser.webView)}
         }
         .environment(\.tvScale,TVDesign.scale(for:geometry.size))
@@ -199,7 +199,7 @@ struct RecentScreen:View {
                                     Button {app.play(item)} label:{HStack(spacing:18){Image(systemName:"play.rectangle").font(.system(size:30)).frame(width:55);VStack(alignment:.leading,spacing:5){Text(item.title).font(.system(size:20,weight:.medium));Text(Timeline.text(item.position)).font(.system(size:13)).foregroundStyle(.secondary)};Spacer()}.padding(20).background(.white.opacity(app.focus.row>0 && app.focus.column==i ? 0.18 : 0.05),in:RoundedRectangle(cornerRadius:16))}.buttonStyle(.plain).id(i)
                                 }
                             }
-                        }.onChange(of:app.focus.column){_,value in withAnimation((app.reducedMotion || systemReduceMotion) ? nil : .smooth(duration:0.25)){proxy.scrollTo(value,anchor:.center)}}
+                        }.onChange(of:app.focus.column){value in withAnimation((app.reducedMotion || systemReduceMotion) ? nil : .tvSmooth(duration:0.25)){proxy.scrollTo(value,anchor:.center)}}
                     }
                 }
             }.padding(45)
@@ -255,13 +255,44 @@ struct ControlCenter:View {
             VStack(alignment:.trailing,spacing:18*scale){
                 HStack(spacing:18*scale){
                     TVClock()
-                    Button{app.backControlCenter()}label:{Image(systemName:"xmark").font(.system(size:17*scale,weight:.semibold)).frame(width:24*scale,height:24*scale)}.buttonStyle(TVActionStyle(reducedMotion:motion)).accessibilityLabel("关闭控制中心")
+                    Button{app.backControlCenter()}label:{Image(systemName:app.remoteSettingsOpen ? "chevron.left":"xmark").font(.system(size:17*scale,weight:.semibold)).frame(width:24*scale,height:24*scale)}.buttonStyle(TVActionStyle(reducedMotion:motion)).accessibilityLabel("返回")
                 }.padding(.leading,22*scale).modifier(TVSurface(radius:50))
-                Button{app.performMenu(0)}label:{
-                    HStack(spacing:18*scale){Image(systemName:"wifi").font(.system(size:27*scale));Text("Wi-Fi");Spacer();Image(systemName:"chevron.right").font(.system(size:14*scale))}.frame(maxWidth:.infinity,minHeight:38*scale)
-                }.buttonStyle(TVActionStyle(fillsWidth:true,focused:true,reducedMotion:motion))
-                    .padding(14*scale).modifier(TVSurface(radius:30))
-            }.frame(width:360*scale).padding(.trailing,42*scale).padding(.top,34*scale)
+                VStack(alignment:.leading,spacing:12*scale){
+                    if app.remoteSettingsOpen {IPhoneRemoteSummary(remote:app.iphoneRemote)}
+                    ForEach(Array(app.menuTitles.enumerated()),id:\.offset){index,title in
+                        Button{app.menuIndex=index;app.performMenu(index)}label:{
+                            HStack(spacing:16*scale){
+                                Image(systemName:app.remoteSettingsOpen ? "iphone.radiowaves.left.and.right" : index==0 ? "wifi":"appletvremote.gen4").font(.system(size:23*scale))
+                                Text(title);Spacer();Image(systemName:"chevron.right").font(.system(size:14*scale))
+                            }.frame(maxWidth:.infinity,minHeight:36*scale)
+                        }.buttonStyle(TVActionStyle(fillsWidth:true,focused:app.menuIndex==index,reducedMotion:motion))
+                    }
+                }.padding(20*scale).modifier(TVSurface(radius:30))
+            }.frame(width:480*scale).padding(.trailing,42*scale).padding(.top,34*scale)
+        }
+    }
+}
+
+struct IPhoneRemoteSummary:View {
+    @ObservedObject var remote:IPhoneRemote
+    @Environment(\.tvScale) private var scale
+    var body:some View {
+        VStack(alignment:.leading,spacing:9*scale){
+            Text("iPhone 遥控器").font(.system(size:25*scale,weight:.semibold))
+            Text(remote.name).font(.system(size:20*scale,weight:.medium))
+            Label(remote.status,systemImage:remote.ready ? "checkmark.circle.fill":"antenna.radiowaves.left.and.right")
+                .foregroundStyle(remote.ready ? Color.green:Color.white.opacity(0.75))
+            if remote.enabled {
+                Text("iPhone 与 Mac 连接同一局域网，在控制中心打开遥控器，选择上方设备。")
+                    .font(.system(size:15*scale)).foregroundStyle(.white.opacity(0.75)).fixedSize(horizontal:false,vertical:true)
+                if remote.pairingOpen {
+                    HStack{Text("配对码");Text(remote.pin).font(.system(size:30*scale,weight:.bold,design:.monospaced))}
+                    Text("配对窗口开放 5 分钟；成功后自动关闭。")
+                        .font(.system(size:13*scale)).foregroundStyle(.white.opacity(0.75))
+                } else {Text("连接过的手机可自动重连；新手机请先选择“配对新手机”。").font(.system(size:13*scale)).foregroundStyle(.white.opacity(0.75)).fixedSize(horizontal:false,vertical:true)}
+                Text("最近按键：\(remote.lastCommand)").font(.system(size:14*scale)).foregroundStyle(.white.opacity(0.75))
+            }
+            Divider().padding(.vertical,5*scale)
         }
     }
 }

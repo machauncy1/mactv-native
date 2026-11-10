@@ -1,0 +1,20 @@
+[package]
+name = "mactv-remote-receiver"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace]
+members = ["vendor/atv-core"]
+
+[dependencies]
+atv-core = { path = "vendor/atv-core" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "signal"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hex = "0.4"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true

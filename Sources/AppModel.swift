@@ -29,6 +29,9 @@ enum Screen {case home,player,web,recent}
         cachedBrowsers[service]=value;return value
     }
     let remote=RemoteInput()
+    let iphoneRemote=IPhoneRemote()
+    let systemAudio=SystemAudio()
+    @Published var remoteSettingsOpen=false
     private var filePanel:NSOpenPanel?
     private var homeIndex=UserDefaults.standard.integer(forKey:"homeAppIndex")
     private var recentIndex=0
@@ -40,9 +43,14 @@ enum Screen {case home,player,web,recent}
     private var eventMonitor:Any?
     private var consumedKeys=Set<UInt16>()
     private var resignObserver:NSObjectProtocol?
+    private var remoteAudioSync:Task<Void,Never>?
     var lastKeyboardTime=Date.distantPast
-    let menuTitles=["Wi-Fi"]
-    func backControlCenter(){menuOpen=false}
+    var menuTitles:[String] {
+        if remoteSettingsOpen {return [iphoneRemote.enabled ? "关闭手机遥控" : "开启手机遥控", "修改设备名称", "配对新手机", "忘记配对并重新配对", "重启接收端"]}
+        return ["Wi-Fi", "iPhone 遥控器"]
+    }
+    func backControlCenter(){if remoteSettingsOpen {remoteSettingsOpen=false;menuIndex=1}else{menuOpen=false}}
+
 
     init() {
         if let bytes=UserDefaults.standard.data(forKey:"library"),let items=try? JSONDecoder().decode([LibraryItem].self,from:bytes) {library=Array(items.prefix(30))}
@@ -54,10 +62,22 @@ enum Screen {case home,player,web,recent}
         }
         homeIndex=min(5,max(0,homeIndex));focus=HomeFocus(row:0,column:homeIndex)
         remote.onCommand={ [weak self] command,source in self?.input(command,source:source) }
+        iphoneRemote.onCommand={ [weak self] command in self?.input(command,source:"iphone") }
+        iphoneRemote.onAudio={ [weak self] volume,muted in
+            guard let self,NSApp.isActive else{return}
+            self.setRemoteAudio(volume:volume,muted:muted)
+        }
         playback.onProgress={ [weak self] _ in self?.persistProgress() }
     }
     func start() {
         remote.start()
+        iphoneRemote.start()
+        remoteAudioSync=Task { [weak self] in
+            while !Task.isCancelled {
+                self?.syncRemoteAudio()
+                try? await Task.sleep(for:.seconds(1))
+            }
+        }
         eventMonitor=NSEvent.addLocalMonitorForEvents(matching:[.keyDown,.keyUp,.systemDefined]) { [weak self] event in
             guard let self,NSApp.isActive else{return event}
             if event.type == .keyUp {return self.consumedKeys.remove(event.keyCode) == nil ? event:nil}
@@ -66,10 +86,10 @@ enum Screen {case home,player,web,recent}
             return result
         }
         resignObserver=NotificationCenter.default.addObserver(forName:NSApplication.didResignActiveNotification,object:nil,queue:.main) { [weak self] _ in
-            Task { @MainActor in self?.remote.releaseAll();self?.consumedKeys.removeAll() }
+            Task { @MainActor [weak self] in self?.remote.releaseAll();self?.consumedKeys.removeAll() }
         }
     }
-    func finish() {persistProgress(force:true);remote.stop();playback.finish();if let eventMonitor {NSEvent.removeMonitor(eventMonitor)};if let resignObserver {NotificationCenter.default.removeObserver(resignObserver)}}
+    func finish() {persistProgress(force:true);remoteAudioSync?.cancel();remote.stop();iphoneRemote.stop();playback.finish();if let eventMonitor {NSEvent.removeMonitor(eventMonitor)};if let resignObserver {NotificationCenter.default.removeObserver(resignObserver)}}
     private func keyboard(_ event:NSEvent)->NSEvent? {
         if let panel=filePanel,panel.isVisible {
             if event.type == .keyDown && event.keyCode==53 {panel.cancel(nil);return nil}
@@ -200,7 +220,7 @@ enum Screen {case home,player,web,recent}
         }
     }
     func home() {
-        persistProgress(force:true);playback.pause();cachedBrowsers[service]?.pause();menuOpen=false;playerActionIndex=nil;playerScrubbing=false;screen = .home
+        persistProgress(force:true);playback.pause();cachedBrowsers[service]?.pause();menuOpen=false;remoteSettingsOpen=false;playerActionIndex=nil;playerScrubbing=false;screen = .home
         focus=HomeFocus(row:0,column:homeIndex)
     }
     func focusHomeApp(_ index:Int){
@@ -209,13 +229,84 @@ enum Screen {case home,player,web,recent}
         UserDefaults.standard.set(next,forKey:"homeAppIndex")
     }
     func media(_ command:RemoteCommand) {
-        if screen == .web {browser.send(command)}
+        systemAudio.adjust(command){[weak self] result in
+            guard let self else{return}
+            switch result {
+            case .success(let state):self.showSystemAudio(state)
+            case .unsupported:self.playerAudio(command)
+            case .unavailable:self.message("系统音频服务未响应，请稍后重试")
+            }
+        }
+    }
+    private func playerAudio(_ command:RemoteCommand){
+        if screen == .web {browser.send(command);message("当前输出不支持系统调音，已调整播放器音量")}
         else {
             if command == .mute {playback.toggleMute()} else {playback.changeVolume(command == .volumeUp ? 0.05 : -0.05)}
             message(playback.muted ? "已静音" : "播放音量 \(Int(playback.volume*100))%")
         }
     }
+    private func syncRemoteAudio() {
+        guard iphoneRemote.running else{return}
+        systemAudio.read{[weak self] result in
+            guard let self else{return}
+            switch result {
+            case .success(let state):self.iphoneRemote.updateAudio(volume:state.volume,muted:state.muted)
+            case .unsupported:self.syncPlayerAudio()
+            case .unavailable:break
+            }
+        }
+    }
+    private func syncPlayerAudio(){
+        if screen == .web,let current=cachedBrowsers[service] {
+            current.webView.evaluateJavaScript("(()=>{const v=\(YouTubeBrowser.mediaElement);return v?{volume:v.volume,muted:v.muted}:null})()") { [weak self] value,_ in
+                guard let self,self.screen == .web,self.service==current.service,
+                      let state=value as? [String:Any],let volume=state["volume"] as? Double,let muted=state["muted"] as? Bool else{return}
+                self.iphoneRemote.updateAudio(volume:volume,muted:muted)
+            }
+        }else{iphoneRemote.updateAudio(volume:Double(playback.volume),muted:playback.muted)}
+    }
+    private func showSystemAudio(_ state:SystemAudioSnapshot){
+        iphoneRemote.updateAudio(volume:state.volume,muted:state.muted)
+        message(state.muted ? "系统已静音":"系统音量 \(Int((state.volume*100).rounded()))%")
+    }
+    func setRemoteAudio(volume:Double,muted:Bool) {
+        guard let volume=AudioLevel.clamped(volume) else{return}
+        systemAudio.set(volume:volume,muted:muted){[weak self] result in
+            guard let self else{return}
+            switch result {
+            case .success(let state):self.showSystemAudio(state)
+            case .unsupported:self.setPlayerAudio(volume:volume,muted:muted)
+            case .unavailable:self.message("系统音频服务未响应，请稍后重试")
+            }
+        }
+    }
+    private func setPlayerAudio(volume:Double,muted:Bool){
+        message("当前输出不支持系统调音，已调整播放器音量")
+        if screen == .web {browser.media("v.volume=\(volume);v.muted=\(muted ? "true":"false");")}
+        else {playback.volume=Float(volume);playback.muted=muted;playback.player.volume=Float(volume);playback.player.isMuted=muted}
+    }
     func performMenu(_ index:Int) {
+        if remoteSettingsOpen {
+            switch index {
+            case 0:iphoneRemote.setEnabled(!iphoneRemote.enabled);objectWillChange.send()
+            case 1:
+                let alert=NSAlert();alert.messageText="遥控设备名称"
+                alert.informativeText="此名称显示在 iPhone 的遥控器设备列表中。保存后接收端会重新连接。"
+                let field=NSTextField(string:iphoneRemote.name);field.frame=NSRect(x:0,y:0,width:320,height:28)
+                alert.accessoryView=field;alert.addButton(withTitle:"保存");alert.addButton(withTitle:"取消")
+                if alert.runModal() == .alertFirstButtonReturn {iphoneRemote.rename(field.stringValue)}
+            case 2:iphoneRemote.pairAnotherPhone()
+            case 3:
+                let alert=NSAlert();alert.messageText="忘记所有手机配对？"
+                alert.informativeText="已连接手机会断开。旧配对将失效，需要用新配对码重新连接。"
+                alert.addButton(withTitle:"忘记并重新配对");alert.addButton(withTitle:"取消")
+                if alert.runModal() == .alertFirstButtonReturn {iphoneRemote.resetPairing()}
+            case 4:iphoneRemote.retry()
+            default:break
+            }
+            return
+        }
+        if index==1 {remoteSettingsOpen=true;menuIndex=0;return}
         guard index==0,let url=URL(string:"x-apple.systempreferences:com.apple.wifi-settings-extension") else{return}
         if NSWorkspace.shared.open(url) {menuOpen=false}else{message("无法打开 Wi-Fi 设置")}
     }
@@ -249,7 +340,7 @@ enum Screen {case home,player,web,recent}
             self?.filePanel=nil
             guard response == .OK else{return}
             let urls=panel.urls
-            Task { @MainActor in
+            Task { @MainActor [weak self] in
                 guard let self else{return}
                 for url in urls {self.remember(url)}
                 if let first=urls.first {self.openURL(first)}
