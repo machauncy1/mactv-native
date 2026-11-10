@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>studio.machauncy.mactv.native</string>
+<key>CFBundleName</key><string>MacTV Native</string>
+<key>CFBundleDisplayName</key><string>MacTV Native</string>
+<key>CFBundleExecutable</key><string>MacTVNative</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleShortVersionString</key><string>0.9.5</string>
+<key>CFBundleVersion</key><string>34</string>
+<key>CFBundleIconFile</key><string>AppIcon</string>
+<key>LSMinimumSystemVersion</key><string>14.0</string>
+<key>NSHighResolutionCapable</key><true/>
+<key>NSInputMonitoringUsageDescription</key><string>Read only your selected USB IPTV remote while MacTV Native is active.</string>
+<key>CFBundleDocumentTypes</key><array><dict><key>CFBundleTypeName</key><string>Movie</string><key>CFBundleTypeRole</key><string>Viewer</string><key>LSItemContentTypes</key><array><string>public.movie</string></array></dict></array>
+</dict></plist>

@@ -1,0 +1,25 @@
+[
+  {
+    "name": "youtube",
+    "title": "YouTube",
+    "source": "https://apps.apple.com/cn/app/youtube/id544007664?uo=4",
+    "artwork": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/84/80/65/84806526-8b53-6e37-8e01-8369c879d30a/logo_youtube_2024_q4_color-0-0-1x_U007emarketing-0-0-0-7-0-0-0-85-220.png/512x512bb.jpg",
+    "publisher": "Google LLC"
+  },
+  {
+    "name": "netflix",
+    "title": "Netflix 官网红色字标",
+    "source": "https://www.netflix.com/tw-en/",
+    "artwork": "https://occ.a.nflxso.net/dnmt/api/v6/iL4oJVDYZ8KLSrJ6eG2OwtghbfQ/AAAAAchJje9GUBJ_ehbO0uOApH8QmRyuvK0LQI9obzFeGtfkpfLyh4FdolMZR4PtvyNoOomDcY7BzTbhFC3gJinH0UadYBg807AKDSPyfsUDm9T3CZKn9OSZN3II7060MZESFcb6YOS9jvzh.svg",
+    "publisher": "Netflix",
+    "derivation": "官网 SVG 原始字标等比例渲染到黑底，不使用 App Store 方形图标。"
+  },
+  {
+    "name": "bilibili",
+    "title": "哔哩哔哩简洁电视标识",
+    "source": "https://github.com/simple-icons/simple-icons/blob/develop/icons/bilibili.svg",
+    "artwork": "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/bilibili.svg",
+    "publisher": "Shanghai Bilibili Animation Co.,Ltd",
+    "derivation": "Simple Icons 品牌矢量轮廓，以品牌粉色渲染于白底；无活动角标、人物或宣传文字。"
+  }
+]
